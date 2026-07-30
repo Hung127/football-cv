@@ -3,3 +3,4 @@ notebook
 roboflow
 python-dotenv
 opencv-python
+supervision
