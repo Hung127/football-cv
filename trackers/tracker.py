@@ -9,8 +9,13 @@ class Tracker:
 
     def get_obj_tracks(self, frames: list):
         tracks = {
+            # frame_idx -> {track_id: {"bbox": [x1, y1, x2, y2]}}
             "player": [],
+
+            # frame_idx -> {track_id: {"bbox": [x1, y1, x2, y2]}}
             "referee": [],
+
+            # frame_idx -> {1: {"bbox": [x1, y1, x2, y2]}}  # single ball
             "ball": [],
         }
 
