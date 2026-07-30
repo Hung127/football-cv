@@ -3,6 +3,7 @@ from ultralytics.engine.results import Results
 import supervision as sv
 import pickle
 import os
+import cv2
 
 class Tracker:
     def __init__(self, model_path: str):
@@ -60,11 +61,16 @@ class Tracker:
                 if class_id == class_names_inv["player"]:
                     tracks["player"][frame_num][track_id] = {"bbox": bbox}
 
-                elif class_id == class_names_inv["ball"]:
-                    tracks["ball"][frame_num][1] = {"bbox": bbox} # assume that it is only one ball on the pitch
-
                 elif class_id == class_names_inv["referee"]:
                     tracks["referee"][frame_num][track_id] = {"bbox": bbox}
+
+            # Ball: use raw YOLO detections
+            for i in range(len(detection_supervision)):
+                bbox = detection_supervision.xyxy[i].tolist()
+                class_id = detection_supervision.class_id[i] # type: ignore
+
+                if class_id == class_names_inv["ball"]:
+                    tracks["ball"][frame_num][1] = {"bbox": bbox}
 
         if stub_path is not None:
             with open(stub_path, "wb") as f:
@@ -80,6 +86,26 @@ class Tracker:
             detection = self.model.predict(frames[i: i + batch_size], conf=0.1)
             detections += detection
         return detections
+
+    def draw_annotation(self, frames: list, tracks: dict) -> list:
+        # # frame_idx -> {track_id: {"bbox": [x1, y1, x2, y2]}}
+        # "player": [],
+        #
+        # # frame_idx -> {track_id: {"bbox": [x1, y1, x2, y2]}}
+        # "referee": [],
+        #
+        # # frame_idx -> {1: {"bbox": [x1, y1, x2, y2]}}  # single ball
+        # "ball": [],
+        result_frames = []
+        for frame_num, frame in enumerate(frames):
+            result_frame = frame.copy()
+            for k in tracks:
+                for track_id in tracks[k][frame_num]:
+                    bbox = tracks[k][frame_num][track_id]["bbox"]
+                    x1, y1, x2, y2 = map(int, bbox)
+                    cv2.rectangle(result_frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+            result_frames.append(result_frame)
+        return result_frames
 
     # NOTE: test function
     def _partition(self, frames_info: list[Results]):
