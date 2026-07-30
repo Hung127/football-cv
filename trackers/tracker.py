@@ -1,13 +1,21 @@
 from ultralytics.models import YOLO
 from ultralytics.engine.results import Results
 import supervision as sv
+import pickle
+import os
 
 class Tracker:
     def __init__(self, model_path: str):
         self.model = YOLO(model_path)
         self.tracker = sv.ByteTrack()
 
-    def get_obj_tracks(self, frames: list):
+    def get_obj_tracks(self, frames: list, read_from_stub = False, stub_path: str | None = None):
+
+        if read_from_stub and stub_path is not None and os.path.exists(stub_path):
+            with open(stub_path, "rb") as f:
+                tracks = pickle.load(f)
+            return tracks
+
         tracks = {
             # frame_idx -> {track_id: {"bbox": [x1, y1, x2, y2]}}
             "player": [],
@@ -57,6 +65,10 @@ class Tracker:
 
                 elif class_id == class_names_inv["referee"]:
                     tracks["referee"][frame_num][track_id] = {"bbox": bbox}
+
+        if stub_path is not None:
+            with open(stub_path, "wb") as f:
+                pickle.dump(tracks, f)
 
         return tracks
 
