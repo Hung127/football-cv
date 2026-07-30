@@ -32,6 +32,7 @@ runs/
 football-players-detection-1/
 models/
 data/
+stubs/
 
 # PyInstaller
 #   Usually these files are written by a python script from a template
