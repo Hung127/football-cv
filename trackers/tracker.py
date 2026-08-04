@@ -1,3 +1,4 @@
+from cv2.gapi.ot import track
 from ultralytics.models import YOLO
 import supervision as sv
 import pickle
@@ -106,7 +107,7 @@ class Tracker:
             detections += detection
         return detections
 
-    def draw_ellipse(self, frame, bbox: list):
+    def draw_ellipse(self, frame, bbox: list, color: tuple, track_id: int | None = None):
         x_center, y_center = get_center(bbox)
         x1, y1, x2, y2 = map(int, bbox)
         width = get_width(bbox)
@@ -114,9 +115,22 @@ class Tracker:
         axes = (width + 1, int(0.35 * width) + 1)
         cv2.ellipse(img=frame, center=center, axes=axes,
                     angle=0, startAngle=-45, endAngle=235,
-                    color=(0, 0, 255), thickness=2, lineType=cv2.LINE_4)
+                    color=color, thickness=2, lineType=cv2.LINE_4)
+        rectangle_width = 40
+        rectangle_height = 20
+        x1_rect = x_center - rectangle_width // 2
+        x2_rect = x_center + rectangle_width // 2
+        y1_rect = int(y2 - rectangle_height // 2 + 15)
+        y2_rect = int(y2 + rectangle_height // 2 + 15)
+        
+        if track_id is not None:
+            cv2.rectangle(frame, (x1_rect, y1_rect), (x2_rect, y2_rect), color, cv2.FILLED)
+            x1_text = x1_rect + 12
+            if track_id > 99:
+                x1_text -= 10
+            cv2.putText(frame, f"{track_id}", (x1_text, y1_rect + 15), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 0), 2)
 
-    def draw_triangle(self, frame, bbox: list):
+    def draw_triangle(self, frame, bbox: list, color: tuple):
         x_center, y_center = get_center(bbox)
         x1, y1, x2, y2 = map(int, bbox)
         width = get_width(bbox)
@@ -124,7 +138,10 @@ class Tracker:
         top_left = (x1 - 10, y1 - 10 - width*2 - 1)
         top_right = (x2 + 10, y1 - 10 - width*2 - 1)
         points = np.array([center, top_left, top_right], np.int32)
-        cv2.drawContours(frame, [points], -1, (0, 255, 0), thickness=-1)
+        # triangle
+        cv2.drawContours(frame, [points], 0, color, cv2.FILLED)
+        # border
+        cv2.drawContours(frame, [points], 0, (0, 0, 0), 2)
 
 
 
@@ -144,11 +161,10 @@ class Tracker:
                 for track_id in tracks[k][frame_num]:
                     bbox = tracks[k][frame_num][track_id]["bbox"]
                     if k == "player":
-                        self.draw_ellipse(result_frame, bbox)
+                        self.draw_ellipse(result_frame, bbox, (0, 0, 255), track_id)
                     elif k == "ball":
-                        self.draw_triangle(result_frame, bbox)
+                        self.draw_triangle(result_frame, bbox, (0, 255, 0))
                     else:
-                        x1, y1, x2, y2 = map(int, bbox)
-                        cv2.rectangle(result_frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+                        self.draw_ellipse(result_frame, bbox, (0, 255, 255), track_id)
             result_frames.append(result_frame)
         return result_frames
