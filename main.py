@@ -1,26 +1,27 @@
 from trackers import Tracker
 import cv2
-from utils import read_video, save_video, read_video_batch
+from utils import read_video, read_video_batch
 
 def main():
     # read video
-    print("READING...")
+    print("INITIALIZING...")
     video_path = "./data/input/08fd33_4.mp4"
     tracker = Tracker("./models/best.pt")
     # save video
     saved_video_path = "./data/output/output_video.avi"
     start = 0
 
-    # frames_info = tracker.detect_frames(video_frames) # type: ignore
     print("TRACKING...")
     tracks = tracker.get_obj_tracks([], read_from_stub=True, stub_path="./stubs/track_stubs.pkl")
 
     batch_size = 50
     writer = None
 
+    # READING batches
     for frames_batch in read_video_batch(video_path, batch_size):
         end = start + len(frames_batch)
 
+        # PROCESS
         print( f"Processing frames " f"{start}–{end - 1}")
         track_batch = {
             object_type: tracks[object_type][start:end]
@@ -29,6 +30,10 @@ def main():
 
         annotated_batch = tracker.draw_annotation(frames_batch, track_batch)
 
+        if not annotated_batch:
+            continue
+
+        # WRITE
         if writer is None:
             fourcc = cv2.VideoWriter.fourcc(*"XVID")
             height, width = annotated_batch[0].shape[:2]
@@ -43,14 +48,15 @@ def main():
         for frame in annotated_batch:
             writer.write(frame)
 
+        # free up memory
         del annotated_batch
         del track_batch
 
+        # update frame num
         start = end
 
     if writer is not None:
         writer.release()
-    # save_video(processed_frames, saved_video_path)
 
 if __name__ == '__main__':
     main()
